@@ -1,17 +1,13 @@
+using Underscores
+
 function main()
-    input = readlines("input")
-    input = replace.(input, " -> " => ",")
-    input = split.(input, ",")
-    input = map(x -> parse.(Int64, x), input)
-    input = vcat(input'...)
+    input = @_ readlines("input") |> replace.(__, " -> " => ",") |> split.(__, ",") |> map(parse.(Int64, _), __)
 
-    sz = max(input...) + 1
-    grid = Matrix{Int64}(undef, sz, sz)
-    grid[:,:] .= 0
+    sz = max(max.(input...)...) + 1
+    grid = zeros(Int64, sz, sz)
 
-    for i = 1:size(input, 1)
-        points = input[i,:]
-        points .+= 1
+    for points in input
+        points .+= 1 # 1-indexing
         if points[1] == points[3]
             grid[points[1],min(points[2],points[4]):max(points[2],points[4])] .+= 1
         elseif points[2] == points[4]
