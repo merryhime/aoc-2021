@@ -1,32 +1,24 @@
+using Underscores
+
 function main()
     input = readlines("input")
+    order = @_ input[1] |> split(__, ",") |> parse.(Int64, __)
+    boards = @_ input[2:end] |> reduce(string(_1, " ", _2), __) |> strip |> split |> parse.(Int64, __) |> reshape(__, 5, 5, :)
 
-    order = parse.(Int64, split(input[1], ","))
-    boards = reshape(parse.(Int64, split(strip(reduce((a, b) -> string(a, " ", b), input[2:end])))), 5, 5, :)
-
-    hits = BitArray(undef, size(boards))
-    hits[:,:,:] .= false
-
-    finalval = -1
+    hits = falses(size(boards))
 
     for val in order
-        hits = hits .|| (boards .== val)
+        hits = hits .| (boards .== val)
 
-        if any(sum(hits, dims=1) .== 5) || any(sum(hits, dims=2) .== 5)
-            finalval = val
+        wins = reshape(reduce(|, sum(hits, dims=1) .== 5; dims=2) .| reduce(|, sum(hits, dims=2) .== 5; dims=1), :)
+
+        if any(wins)
+            b = boards[:,:,wins]
+            h = hits[:,:,wins]
+            display(val * sum(b[.!h]))
             break
         end
     end
-
-    index = sum(sum(hits, dims=1) .== 5, dims=2) + sum(sum(hits, dims=2) .== 5, dims=1)
-    index = index .== 1
-    index = reshape(index, :)
-
-    b = boards[:,:,index]
-    h = hits[:,:,index]
-    s = sum(b[.!h])
-
-    display(finalval * s)
 end
 
 main()
