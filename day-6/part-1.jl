@@ -1,12 +1,9 @@
+using Underscores
+
 function main()
-    input = read("input", String)
-    input = split.(strip(input), ",")
-    input = parse.(Int64, input)
-    input .+= 1
+    input = @_ read("input", String) |> strip(__) |> split.(__, ",") |> parse.(Int64, __)
 
-    state = [0,0,0,0,0,0,0,0,0]
-
-    state = sum(input' .== 1:9, dims=2)[:]
+    state = sum(input' .== 0:8, dims=2)[:]
 
     for day = 1:80
         births = first(state)
