@@ -1,5 +1,4 @@
 using Underscores
-using ImageFiltering
 
 function main()
     field = @_ readlines("input") |> map(parse.(Int, collect(_)), __) |> vcat(__'...)
