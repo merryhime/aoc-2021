@@ -1,5 +1,10 @@
 using Underscores
 
+# Theoretically one could do:
+#   using ImageFiltering
+#   prop(m) = round.(imfilter(Matrix{Int}(m), centered(ones(3, 3)), Fill(0)))
+# but the round is required due to floating point accuracy
+
 rotu(m) = [ m[2:end,:]           ; falses(1, size(m,2)) ]
 rotd(m) = [ falses(1, size(m,2)) ; m[1:end-1,:]         ]
 rotl(m) = [ m[:,2:end]             falses(size(m,1), 1) ]
