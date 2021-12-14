@@ -11,7 +11,7 @@ rules[(template[end], '$')] = [(template[end], '$')]
 function run(n)
     pairs = zip(template[1:end], template[2:end] * '$') |> collect |> counter
     for i=1:n
-        pairs = pairs |> @map(x->map(y->(y, x.second), get(rules, x.first, []))) |> Iterators.flatten |> @groupby(first(_)) |> @map((key(_), collect(_) |> @map(x->x[2]) |> sum)) |> Dict
+        pairs = pairs |> @map(x->map(y->(y, x.second), rules[x.first])) |> Iterators.flatten |> @groupby(first(_)) |> @map((key(_), collect(_) |> @map(x->x[2]) |> sum)) |> Dict
     end
     c = pairs |> @groupby(first(first(_))) |> @map(collect(_) |> @map(x->x[2]) |> sum)
     return max(c...) - min(c...)

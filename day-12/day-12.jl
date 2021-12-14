@@ -11,8 +11,7 @@ function walk(path = ["start"], candup=false)
     if last(path) == "end"
         return 1
     end
-    nexts = get(cavemap, last(path), nothing)
-    return @_ nexts |> @filter(candup || !isdup(_, path)) |> @map(walk([path; _], candup && !isdup(_, path))) |> reduce(+, __; init=0)
+    return @_ cavemap[last(path)] |> @filter(candup || !isdup(_, path)) |> @map(walk([path; _], candup && !isdup(_, path))) |> reduce(+, __; init=0)
 end
 
 function part1()
