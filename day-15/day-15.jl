@@ -6,7 +6,6 @@ field = @_ readlines("input") |> map(parse.(Int, collect(_)), __) |> hcat(__...)
 field = OffsetArray(field, OffsetArrays.Origin(0, 0))
 
 neighbours((x,y)) = [(x, y-1), (x-1, y), (x+1, y), (x, y+1)]
-heuristic(n, goal) = sum(abs.(n .- goal))
 wrap(n) = n ≤ 9 ? n : n - 9
 
 basic(n) = get(field, n, inf)
@@ -20,7 +19,7 @@ end
 function search(f, start, goal, sz)
     openset = PriorityQueue{Tuple{Int,Int}, Int}()
     score = OffsetArray(fill(inf, sz...), OffsetArrays.Origin(0, 0))
-    openset[start] = heuristic(start, goal)
+    openset[start] = 0
     score[start...] = 0
     while true
         current = dequeue!(openset)
@@ -31,7 +30,7 @@ function search(f, start, goal, sz)
             tmp = get(score, current, inf) + f(n)
             if tmp < get(score, n, inf)
                 score[n...] = tmp
-                openset[n] = tmp + heuristic(n, goal)
+                openset[n] = tmp
             end
         end
     end
