@@ -1,4 +1,4 @@
-using OffsetArrays, Underscores
+using DataStructures, OffsetArrays, Underscores
 
 const inf = 999999999
 
@@ -17,24 +17,25 @@ function expanded(n)
     return wrap((field[(n .% size(field))...] + sum(n .÷ size(field))))
 end
 
-function search(start, goal, f)
-    openset = Set([start])
-    score = Dict(start => 0)
-    while !isempty(openset)
-        current = argmin(x->score[x] + heuristic(x, goal), openset)
+function search(f, start, goal, sz)
+    openset = PriorityQueue{Tuple{Int,Int}, Int}()
+    score = OffsetArray(fill(inf, sz...), OffsetArrays.Origin(0, 0))
+    openset[start] = heuristic(start, goal)
+    score[start...] = 0
+    while true
+        current = dequeue!(openset)
         if current == goal
-            return score[current]
+            return score[current...]
         end
-        delete!(openset, current)
         for n ∈ neighbours(current)
             tmp = get(score, current, inf) + f(n)
             if tmp < get(score, n, inf)
-                score[n] = tmp
-                push!(openset, n)
+                score[n...] = tmp
+                openset[n] = tmp + heuristic(n, goal)
             end
         end
     end
 end
 
-search((0,0), size(field) .- 1, basic) |> display
-search((0,0), size(field) .* 5 .- 1, expanded) |> display
+search(basic, (0,0), size(field) .- 1, size(field)) |> display
+search(expanded, (0,0), size(field) .* 5 .- 1, size(field) .* 5) |> display
