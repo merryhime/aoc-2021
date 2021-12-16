@@ -11,41 +11,39 @@ struct OperatorPacket <: Packet
     subpackets::Vector{Packet}
 end
 
-tobits(x) = @_ collect(x) |> parse.(UInt, __; base=16) |> string.(__; base=2, pad=4) |> prod
-getfield(x, n) = (parse.(UInt, x[1:n]; base=2), x[n+1:end])
+mutable struct Stream
+    bits::String
+end
+function getfield!(s::Stream, n)
+    x, s.bits = parse.(UInt, s.bits[1:n]; base=2), s.bits[n+1:end]
+    return x
+end
+ts(x) = @_ collect(x) |> parse.(UInt, __; base=16) |> string.(__; base=2, pad=4) |> prod |> Stream
 
-function parsepacket(bits)
-    ver, bits = getfield(bits, 3)
-    typeid, bits = getfield(bits, 3)
+function parsepacket(s)
+    ver, typeid = getfield!(s, 3), getfield!(s, 3)
 
     if typeid == 4
-        value = zero(Int64)
-        cont = 1
+        value, cont = zero(Int64), 1
         while cont == 1
-            cont, bits = getfield(bits, 1)
-            next, bits = getfield(bits, 4)
-            value = (value << 4) | next
+            cont = getfield!(s, 1)
+            value = (value << 4) | getfield!(s, 4)
         end
-        return LiteralPacket(ver, value), bits
+        return LiteralPacket(ver, value)
     end
 
-    lentype, bits = getfield(bits, 1)
-    subpackets = Packet[]
-    if lentype == 0
-        len, bits = getfield(bits, 15)
-        rem, bits = bits[1:len], bits[len+1:end]
-        while !isempty(rem)
-            p, rem = parsepacket(rem)
-            push!(subpackets, p)
+    if getfield!(s, 1) == 0
+        len = getfield!(s, 15)
+        rem, s.bits = Stream(s.bits[1:len]), s.bits[len+1:end]
+        subpackets = Packet[]
+        while !isempty(rem.bits)
+            push!(subpackets, parsepacket(rem))
         end
     else
-        len, bits = getfield(bits, 11)
-        for i=1:len
-            p, bits = parsepacket(bits)
-            push!(subpackets, p)
-        end
+        len = getfield!(s, 11)
+        subpackets = [parsepacket(s) for i=1:len]
     end
-    return OperatorPacket(ver, typeid, subpackets), bits
+    return OperatorPacket(ver, typeid, subpackets)
 end
 
 function versionsum(packet)
@@ -60,7 +58,7 @@ function evaluate(packet)
 end
 
 input = read("input", String) |> strip
-packet, _ = parsepacket(tobits(input))
+packet = parsepacket(ts(input))
 
 display(packet)
 display(Int(versionsum(packet)))
