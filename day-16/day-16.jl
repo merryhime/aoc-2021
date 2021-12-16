@@ -1,5 +1,3 @@
-using Query
-
 abstract type Packet end
 struct LiteralPacket <: Packet
     version::UInt8
@@ -47,11 +45,11 @@ function parsepacket(s)
 end
 
 versionsum(p::LiteralPacket) = p.version
-versionsum(p::OperatorPacket) = p.version + (p.subpackets |> @map(versionsum(_)) |> sum)
+versionsum(p::OperatorPacket) = p.version + sum(versionsum(s) for s ∈ p.subpackets)
 
 const op = [sum, prod, minimum, maximum, nothing, ((a,b),)->a>b, ((a,b),)->a<b, ((a,b),)->a==b]
 evaluate(p::LiteralPacket) = p.value
-evaluate(p::OperatorPacket) = p.subpackets |> @map(evaluate(_)) |> op[p.typeid + 1]
+evaluate(p::OperatorPacket) = op[p.typeid + 1](evaluate(s) for s ∈ p.subpackets)
 
 input = read("input", String) |> strip
 packet = parsepacket(ts(input))
