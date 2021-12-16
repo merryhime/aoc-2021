@@ -1,4 +1,4 @@
-using Underscores, Query
+using Query
 
 abstract type Packet end
 struct LiteralPacket <: Packet
@@ -18,7 +18,7 @@ function getfield!(s::Stream, n)
     x, s.bits = parse.(UInt, s.bits[1:n]; base=2), s.bits[n+1:end]
     return x
 end
-ts(x) = @_ collect(x) |> parse.(UInt, __; base=16) |> string.(__; base=2, pad=4) |> prod |> Stream
+ts(x) = string.(parse.(UInt, collect(x); base=16); base=2, pad=4) |> prod |> Stream
 
 function parsepacket(s)
     ver, typeid = getfield!(s, 3), getfield!(s, 3)
@@ -46,16 +46,12 @@ function parsepacket(s)
     return OperatorPacket(ver, typeid, subpackets)
 end
 
-function versionsum(packet)
-    packet isa LiteralPacket && return packet.version
-    return packet.version + (packet.subpackets |> @map(versionsum(_)) |> sum)
-end
+versionsum(p::LiteralPacket) = p.version
+versionsum(p::OperatorPacket) = p.version + (p.subpackets |> @map(versionsum(_)) |> sum)
 
-function evaluate(packet)
-    packet isa LiteralPacket && return packet.value
-    op = [sum, prod, minimum, maximum, nothing, ((a,b),)->a>b, ((a,b),)->a<b, ((a,b),)->a==b]
-    return packet.subpackets |> @map(evaluate(_)) |> op[packet.typeid + 1]
-end
+const op = [sum, prod, minimum, maximum, nothing, ((a,b),)->a>b, ((a,b),)->a<b, ((a,b),)->a==b]
+evaluate(p::LiteralPacket) = p.value
+evaluate(p::OperatorPacket) = p.subpackets |> @map(evaluate(_)) |> op[p.typeid + 1]
 
 input = read("input", String) |> strip
 packet = parsepacket(ts(input))
