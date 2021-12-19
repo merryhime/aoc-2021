@@ -40,14 +40,14 @@ apply(s::Scanner, r::Rel) = s |> @map(apply(_, r)) |> Scanner
 apply(x, rs::Vector{Rel}) = reduce(apply, rs; init=x)
 origin(r) = apply((0,0,0), r)
 function bestrel(s1::Scanner, s2::Scanner)
-    rels = [Rel(rot, rotates[rot](negate(b2)) .+ b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates]
-    o = argmax(x->x.second, counter(rels))
+    rels = counter(Rel(rot, rotates[rot](negate(b2)) .+ b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates)
+    o = argmax(x->x.second, rels)
     return o.second < 12 ? nothing : o.first
 end
 
 const MaybeRel = Union{Nothing, Rel, Vector{Rel}}
 rels = Dict{Int, MaybeRel}([j => bestrel(scannerdata[1], scannerdata[j]) for j ∈ 2:numscanners])
-relcache = Dict{Tuple{Int, Int}, MaybeRel}()
+relcache = Dict{Tuple{Int, Int}, Union{Nothing, Rel}}()
 while any(isnothing, values(rels))
     for i=2:numscanners
         !isnothing(rels[i]) && continue
@@ -56,6 +56,7 @@ while any(isnothing, values(rels))
             r = get!(()->bestrel(scannerdata[j], scannerdata[i]), relcache, (j, i))
             if !isnothing(r)
                 rels[i] = vcat(r, rels[j])
+                break
             end
         end
     end
