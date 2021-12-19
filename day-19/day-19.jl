@@ -1,4 +1,4 @@
-using Query
+using DataStructures, Query
 
 const Coord = Tuple{Int, Int, Int}
 negate(c::Coord) = (0,0,0) .- c
@@ -39,25 +39,22 @@ const numrotates = length(rotates)
 apply(c::Coord, r::Rel) = rotates[r.rot](c .+ r.preshift) .+ r.postshift
 apply(s::Scanner, r::Rel) = s |> @map(apply(_, r)) |> Scanner
 apply(x, rs::Vector{Rel}) = reduce(apply, rs; init=x)
-crosscorr(s1::Scanner, s2::Scanner, r::Rel) = length(s1 ∩ apply(s2, r))
-bestrel(s1::Scanner, s2::Scanner) = argmax(r->crosscorr(s1, s2, r), Rel(negate(b2), rot, b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates)
-
-const MaybeRel = Union{Nothing, Rel, Vector{Rel}}
-function getrel(i, j)
-    display((i, j))
-    r = bestrel(scannerdata[i], scannerdata[j])
-    crosscorr(scannerdata[i], scannerdata[j], r) ≥ 12 && return r
-    return nothing
+origin(r) = apply((0,0,0), r)
+function bestrel(s1::Scanner, s2::Scanner)
+    rels = [Rel(negate(b2), rot, b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates]
+    o = argmax(x->x.second, counter(origin.(rels)))
+    return o.second < 12 ? nothing : first(rels |> @filter(origin(_) == o.first))
 end
 
-rels = Dict{Int, MaybeRel}([j => getrel(1, j) for j ∈ 2:numscanners])
+const MaybeRel = Union{Nothing, Rel, Vector{Rel}}
+rels = Dict{Int, MaybeRel}([j => bestrel(scannerdata[1], scannerdata[j]) for j ∈ 2:numscanners])
 relcache = Dict{Tuple{Int, Int}, MaybeRel}()
 while any(isnothing, values(rels))
     for i=2:numscanners
         !isnothing(rels[i]) && continue
         for j=2:numscanners
             (isnothing(rels[j]) || i == j) && continue
-            r = get!(()->getrel(j, i), relcache, (j, i))
+            r = get!(()->bestrel(scannerdata[j], scannerdata[i]), relcache, (j, i))
             if !isnothing(r)
                 rels[i] = vcat(r, rels[j])
             end
@@ -69,7 +66,6 @@ rels[1] = Rel((0,0,0), 1, (0,0,0))
 allbeacons = mapreduce(s->apply(scannerdata[s], rels[s]), ∪, 1:numscanners)
 display(length(allbeacons))
 
-scannerpositions = map(r->apply((0,0,0), r), values(rels))
+scannerpositions = map(origin, values(rels))
 manhattan(o1, o2) = sum(abs.(o1 .- o2))
 display(Iterators.product(scannerpositions, scannerpositions) |> @map(manhattan(_[1], _[2])) |> maximum)
-
