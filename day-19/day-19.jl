@@ -40,32 +40,46 @@ apply(s::Scanner, r::Rel) = s |> @map(apply(_, r)) |> Scanner
 apply(x, rs::Vector{Rel}) = reduce(apply, rs; init=x)
 origin(r) = apply((0,0,0), r)
 function bestrel(s1::Scanner, s2::Scanner)
-    rels = counter(Rel(rot, rotates[rot](negate(b2)) .+ b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates)
-    o = argmax(x->x.second, rels)
-    return o.second < 12 ? nothing : o.first
+    for r ∈ 1:numrotates
+        rot = @inbounds rotates[r]
+        as2 = @. rot(negate(s2))
+        c = counter(b2 .+ b1 for b1 ∈ s1 for b2 ∈ as2)
+        o = argmax(x->x.second, c)
+        o.second ≥ 12 && return Rel(r, o.first)
+    end
+    return nothing
 end
 
 const MaybeRel = Union{Nothing, Rel, Vector{Rel}}
-rels = Dict{Int, MaybeRel}([j => bestrel(scannerdata[1], scannerdata[j]) for j ∈ 2:numscanners])
-relcache = Dict{Tuple{Int, Int}, Union{Nothing, Rel}}()
-while any(isnothing, values(rels))
-    for i=2:numscanners
-        !isnothing(rels[i]) && continue
-        for j=2:numscanners
-            (isnothing(rels[j]) || i == j) && continue
-            r = get!(()->bestrel(scannerdata[j], scannerdata[i]), relcache, (j, i))
-            if !isnothing(r)
-                rels[i] = vcat(r, rels[j])
-                break
+function getrels()
+    rels = Dict{Int, MaybeRel}([j => bestrel(scannerdata[1], scannerdata[j]) for j ∈ 2:numscanners])
+    relcache = Dict{Tuple{Int, Int}, MaybeRel}()
+    while any(isnothing, values(rels))
+        for i=2:numscanners
+            isnothing(rels[i]) && continue
+            for j=2:numscanners
+                (!isnothing(rels[j]) || i == j) && continue
+                r = get!(()->bestrel(scannerdata[i], scannerdata[j]), relcache, (i, j))
+                if !isnothing(r)
+                    rels[j] = vcat(r, rels[i])
+                    break
+                end
             end
         end
     end
+    rels[1] = Rel(1, (0,0,0))
+    return rels
 end
-rels[1] = Rel(1, (0,0,0))
 
-allbeacons = mapreduce(s->apply(scannerdata[s], rels[s]), ∪, 1:numscanners)
-display(length(allbeacons))
+function main()
+    rels = getrels()
 
-scannerpositions = map(origin, values(rels))
-manhattan(o1, o2) = sum(abs.(o1 .- o2))
-display(Iterators.product(scannerpositions, scannerpositions) |> @map(manhattan(_[1], _[2])) |> maximum)
+    allbeacons = mapreduce(s->apply(scannerdata[s], rels[s]), ∪, 1:numscanners)
+    display(length(allbeacons))
+
+    scannerpositions = map(origin, values(rels))
+    manhattan(o1, o2) = sum(abs.(o1 .- o2))
+    display(Iterators.product(scannerpositions, scannerpositions) |> @map(manhattan(_[1], _[2])) |> maximum)
+end
+
+main()
