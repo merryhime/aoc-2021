@@ -23,9 +23,8 @@ end
 const numscanners = length(scannerdata)
 
 struct Rel
-    preshift::Coord
     rot::Int
-    postshift::Coord
+    shift::Coord
 end
 const rotates = [
     ((x, y, z)::Coord) -> (x, y, z), ((x, y, z)::Coord) -> (x, y, -z), ((x, y, z)::Coord) -> (x, -y, z), ((x, y, z)::Coord) -> (x, -y, -z), ((x, y, z)::Coord) -> (-x, y, z), ((x, y, z)::Coord) -> (-x, y, -z), ((x, y, z)::Coord) -> (-x, -y, z), ((x, y, z)::Coord) -> (-x, -y, -z),
@@ -36,14 +35,14 @@ const rotates = [
     ((x, y, z)::Coord) -> (z, y, x), ((x, y, z)::Coord) -> (z, y, -x), ((x, y, z)::Coord) -> (z, -y, x), ((x, y, z)::Coord) -> (z, -y, -x), ((x, y, z)::Coord) -> (-z, y, x), ((x, y, z)::Coord) -> (-z, y, -x), ((x, y, z)::Coord) -> (-z, -y, x), ((x, y, z)::Coord) -> (-z, -y, -x),
 ]
 const numrotates = length(rotates)
-apply(c::Coord, r::Rel) = rotates[r.rot](c .+ r.preshift) .+ r.postshift
+apply(c::Coord, r::Rel) = rotates[r.rot](c) .+ r.shift
 apply(s::Scanner, r::Rel) = s |> @map(apply(_, r)) |> Scanner
 apply(x, rs::Vector{Rel}) = reduce(apply, rs; init=x)
 origin(r) = apply((0,0,0), r)
 function bestrel(s1::Scanner, s2::Scanner)
-    rels = [Rel(negate(b2), rot, b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates]
-    o = argmax(x->x.second, counter(origin.(rels)))
-    return o.second < 12 ? nothing : first(rels |> @filter(origin(_) == o.first))
+    rels = [Rel(rot, rotates[rot](negate(b2)) .+ b1) for b1 ∈ s1 for b2 ∈ s2 for rot ∈ 1:numrotates]
+    o = argmax(x->x.second, counter(rels))
+    return o.second < 12 ? nothing : o.first
 end
 
 const MaybeRel = Union{Nothing, Rel, Vector{Rel}}
@@ -61,7 +60,7 @@ while any(isnothing, values(rels))
         end
     end
 end
-rels[1] = Rel((0,0,0), 1, (0,0,0))
+rels[1] = Rel(1, (0,0,0))
 
 allbeacons = mapreduce(s->apply(scannerdata[s], rels[s]), ∪, 1:numscanners)
 display(length(allbeacons))
