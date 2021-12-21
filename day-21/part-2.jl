@@ -1,4 +1,4 @@
-using DataStructures
+using DataStructures, Query
 
 mutable struct Player
     score::Int
@@ -17,12 +17,13 @@ const rollsums = counter([i+j+k for i ∈ 1:3 for j ∈ 1:3 for k ∈ 1:3])
 function gen(p::Player)
     ps = counter([p]);
     wins = Accumulator{Player, Int64}()
-    lose = Dict{Int, Vector{Pair{Player, Int64}}}()
+    lose = Dict{Int, Int}()
     turns = 1
     while !isempty(ps)
         ps = reducecount(turn(p.first, r.first) => p.second * r.second for p ∈ ps for r ∈ rollsums)
         wins = merge(wins, Accumulator(Dict(filter(iswin, ps))))
-        ps = lose[turns] = collect(filter(!iswin, ps))
+        ps = collect(filter(!iswin, ps))
+        lose[turns] = sum(x->x.second, ps; init=0)
         turns += 1
     end
     return wins, lose
@@ -33,5 +34,5 @@ input = readlines("input") |> @map(parse(Int, match(r"Player \d starting positio
 a_win, a_lose = gen(Player(0, input[1], 0))
 b_win, b_lose = gen(Player(0, input[2], 0))
 
-display(sum([w.second * l.second for w ∈ a_win for l ∈ b_lose[w.first.turns - 1]]))
-display(sum([w.second * l.second for w ∈ b_win for l ∈ a_lose[w.first.turns]]))
+display(sum(w.second * b_lose[w.first.turns - 1] for w ∈ a_win))
+display(sum(w.second * a_lose[w.first.turns] for w ∈ b_win))
