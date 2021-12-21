@@ -8,23 +8,19 @@ end
 advance(pos::Int, rollsum::Int) = (pos + rollsum - 1) % 10 + 1
 turn(p::Player, rollsum::Int) = Player(p.score + advance(p.position, rollsum), advance(p.position, rollsum), p.turns + 1)
 iswin(p::Player) = p.score ≥ 21
-iswin((p,_)::Pair{Player,Int}) = iswin(p)
+iswin((p,_)::Pair{Player,Int64}) = iswin(p)
 
-reducecount(pairs) = mapreduce(x->counter(Dict([x])), merge, pairs)
-
-const rollsums = counter([i+j+k for i ∈ 1:3 for j ∈ 1:3 for k ∈ 1:3])
+const rollsums = collect(counter([i+j+k for i ∈ 1:3 for j ∈ 1:3 for k ∈ 1:3]))
 
 function gen(p::Player)
-    ps = counter([p]);
-    wins = Accumulator{Player, Int64}()
-    lose = Dict{Int, Int}()
-    turns = 1
+    ps = Pair{Player, Int64}[p => 1]
+    wins = Pair{Player, Int64}[]
+    lose = Int64[]
     while !isempty(ps)
-        ps = reducecount(turn(p.first, r.first) => p.second * r.second for p ∈ ps for r ∈ rollsums)
-        wins = merge(wins, Accumulator(Dict(filter(iswin, ps))))
+        ps = [turn(p.first, r.first) => p.second * r.second for p ∈ ps for r ∈ rollsums]
+        wins = vcat(wins, filter(iswin, ps))
         ps = collect(filter(!iswin, ps))
-        lose[turns] = sum(x->x.second, ps; init=0)
-        turns += 1
+        push!(lose, sum(x->x.second, ps; init=0))
     end
     return wins, lose
 end
